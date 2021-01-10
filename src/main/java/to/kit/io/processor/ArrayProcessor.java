@@ -37,8 +37,8 @@ public abstract class ArrayProcessor extends BinaryProcessorBase {
         return allocateArray(length, false);
     }
 
-    public ArrayProcessor(Object parent, Field field, Object fieldValue) {
-        super(parent, field, fieldValue);
-        this.allocate = this.field.getAnnotation(Allocate.class);
+    public ArrayProcessor(Object parent, Field field) {
+        super(parent, field);
+        this.allocate = this.field == null ? null : this.field.getAnnotation(Allocate.class);
     }
 }

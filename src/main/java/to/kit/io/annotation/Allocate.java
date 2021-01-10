@@ -8,7 +8,9 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Allocate {
-    String value() default  "";
-    String count() default  "";
+    String value() default "";
+
+    String count() default "";
+
     int padding() default 1;
 }

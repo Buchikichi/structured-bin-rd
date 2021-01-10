@@ -11,15 +11,14 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class ObjectArrayProcessor extends ArrayProcessor {
-    private Object[] objects;
-
     @Override
     public boolean realize() {
-        return this.fieldType.isArray();
+        return this.fieldType != null && this.fieldType.isArray();
     }
 
     @Override
     public boolean process(InputStream stream, Consumer<Object> consumer) throws IOException {
+        Object[] objects = getFieldValue(Object[].class);
         int remain = stream.available();
 
         if (objects == null) {
@@ -29,13 +28,13 @@ public class ObjectArrayProcessor extends ArrayProcessor {
             if (!this.allocate.count().isEmpty()) {
                 int count = getValueByName(this.allocate.count());
 
-                this.objects = (Object[]) allocateArray(count, true);
+                objects = (Object[]) allocateArray(count, true);
                 try {
-                    this.field.set(this.parent, this.objects);
+                    this.field.set(this.parent, objects);
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
-                Arrays.stream(this.objects).forEach(consumer);
+                Arrays.stream(objects).forEach(consumer);
                 return true;
             }
             int length = getValueByName(this.allocate.value());
@@ -68,10 +67,7 @@ public class ObjectArrayProcessor extends ArrayProcessor {
         return true;
     }
 
-    public ObjectArrayProcessor(Object parent, Field field, Object fieldValue) {
-        super(parent, field, fieldValue);
-        if (fieldValue != null && fieldValue.getClass().isArray()) {
-            this.objects = (Object[]) fieldValue;
-        }
+    public ObjectArrayProcessor(Object parent, Field field) {
+        super(parent, field);
     }
 }

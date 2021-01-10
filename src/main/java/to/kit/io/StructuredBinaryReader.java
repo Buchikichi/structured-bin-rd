@@ -13,9 +13,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 public class StructuredBinaryReader implements AutoCloseable {
     private final InputStream stream;
@@ -23,7 +23,7 @@ public class StructuredBinaryReader implements AutoCloseable {
     private final List<Class<? extends BinaryProcessor>> processorList = new ArrayList<>();
 
     private void registerProcessors() {
-        registerProcessor(ByteArrayProcessor.class, ObjectArrayProcessor.class);
+        registerProcessor(ObjectArrayProcessor.class, ByteArrayProcessor.class);
     }
 
     private int getPos() throws IOException {
@@ -47,9 +47,31 @@ public class StructuredBinaryReader implements AutoCloseable {
         }
     }
 
-    public <T> void read(final T obj) throws IOException, IllegalAccessException {
-        Class<?> clazz = obj.getClass();
+    public <T> void read(final T target, final Field targetField, final Object parent)
+            throws IOException, IllegalAccessException {
+        int lastPos = getPos();
+        Class<?> clazz;
 
+        if (target != null) {
+            clazz = target.getClass();
+        } else if (targetField != null) {
+            clazz = targetField.getType();
+        } else {
+            return;
+        }
+        BinaryProcessor processor00 = this.processorList.stream()
+                .map(c -> BinaryProcessorBase.create(c, parent, targetField))
+                .filter(Objects::nonNull)
+                .filter(BinaryProcessor::realize).findFirst().orElse(null);
+        if (processor00 != null) {
+            processor00.process(this.stream, o -> {
+                try {
+                    read(o, null, null);
+                } catch (IOException | IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
         for (final Field field : clazz.getDeclaredFields()) {
             Class<?> fieldType = field.getType();
             int mod = field.getModifiers();
@@ -57,32 +79,12 @@ public class StructuredBinaryReader implements AutoCloseable {
             if (Modifier.isStatic(mod) || fieldType.isPrimitive()) {
                 continue;
             }
-//            System.out.format(">%s#%s@%08x\n", clazz.getSimpleName(), field.getName(), getPos());
+//            System.out.format(">%s.%s@%08x\n", clazz.getSimpleName(), field.getName(), getPos());
             field.setAccessible(true);
-
-            int lastPos = getPos();
-            final Object fieldValue = field.get(obj);
-            BinaryProcessor processor = this.processorList.stream()
-                    .map(c -> BinaryProcessorBase.create(c, obj, field, fieldValue))
-                    .filter(Objects::nonNull)
-                    .filter(BinaryProcessor::realize).findFirst().orElse(null);
-
-            if (processor != null) {
-                processor.process(this.stream, o -> {
-                    try {
-                        read(o);
-                    } catch (IOException | IllegalAccessException e) {
-                        e.printStackTrace();
-                    }
-                });
-            } else {
-                if (fieldValue == null) {
-                    field.set(obj, read(fieldType));
-                } else {
-                    read(fieldValue);
-                }
-            }
-            pad(lastPos, field);
+            read(field.get(target), field, target);
+        }
+        if (targetField != null) {
+            pad(lastPos, targetField);
         }
     }
 
@@ -90,7 +92,7 @@ public class StructuredBinaryReader implements AutoCloseable {
         T object;
         try {
             object = clazz.getConstructor().newInstance();
-            read(object);
+            read(object, null, null);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
             e.printStackTrace();
             return null;
@@ -100,7 +102,7 @@ public class StructuredBinaryReader implements AutoCloseable {
 
     @SafeVarargs
     public final void registerProcessor(Class<? extends BinaryProcessor>... processors) {
-        this.processorList.addAll(Arrays.asList(processors));
+        Stream.of(processors).forEach(p -> this.processorList.add(0, p));
     }
 
     @Override

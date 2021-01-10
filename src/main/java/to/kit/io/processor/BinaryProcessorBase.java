@@ -10,6 +10,15 @@ public abstract class BinaryProcessorBase implements BinaryProcessor {
     protected final Field field;
     protected final Class<?> fieldType;
 
+    protected <T> T getFieldValue(Class<T> clazz) {
+        try {
+            return clazz.cast(this.field.get(this.parent));
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     protected int getValueByName(String name) {
         int value = 0;
         char upper = Character.toUpperCase(name.charAt(0));
@@ -26,18 +35,18 @@ public abstract class BinaryProcessorBase implements BinaryProcessor {
         return value;
     }
 
-    public BinaryProcessorBase(Object parent, Field field, Object fieldValue) {
-        this.parentClass = parent.getClass();
+    public BinaryProcessorBase(Object parent, Field field) {
+        this.parentClass = parent == null ? null : parent.getClass();
         this.parent = parent;
         this.field = field;
-        this.fieldType = field.getType();
+        this.fieldType = this.field == null ? null : field.getType();
     }
 
     public static BinaryProcessor create(Class<? extends BinaryProcessor> clazz,
-                                         Object parent, Field field, Object fieldValue) {
+                                         Object parent, Field field) {
         try {
-            return clazz.getConstructor(Object.class, Field.class, Object.class)
-                    .newInstance(parent, field, fieldValue);
+            return clazz.getConstructor(Object.class, Field.class)
+                    .newInstance(parent, field);
         } catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             e.printStackTrace();
         }
