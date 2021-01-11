@@ -47,7 +47,7 @@ public class StructuredBinaryReader implements AutoCloseable {
         }
     }
 
-    public <T> void read(final T target, final Field targetField, final Object parent)
+    public <T> void read(final T target, final Field targetField, final int index, final Object parent)
             throws IOException, IllegalAccessException {
         int lastPos = getPos();
         Class<?> clazz;
@@ -59,18 +59,21 @@ public class StructuredBinaryReader implements AutoCloseable {
         } else {
             return;
         }
-        BinaryProcessor processor00 = this.processorList.stream()
-                .map(c -> BinaryProcessorBase.create(c, parent, targetField))
+        BinaryProcessor processor = this.processorList.stream()
+                .map(c -> BinaryProcessorBase.create(c, target, targetField, index, parent))
                 .filter(Objects::nonNull)
                 .filter(BinaryProcessor::realize).findFirst().orElse(null);
-        if (processor00 != null) {
-            processor00.process(this.stream, o -> {
+        if (processor != null) {
+            boolean processed = processor.process(this.stream, (o, ix) -> {
                 try {
-                    read(o, null, null);
+                    read(o, null, ix, parent);
                 } catch (IOException | IllegalAccessException e) {
                     e.printStackTrace();
                 }
             });
+            if (processed) {
+                return;
+            }
         }
         for (final Field field : clazz.getDeclaredFields()) {
             Class<?> fieldType = field.getType();
@@ -81,7 +84,7 @@ public class StructuredBinaryReader implements AutoCloseable {
             }
 //            System.out.format(">%s.%s@%08x\n", clazz.getSimpleName(), field.getName(), getPos());
             field.setAccessible(true);
-            read(field.get(target), field, target);
+            read(field.get(target), field, 0, target);
         }
         if (targetField != null) {
             pad(lastPos, targetField);
@@ -92,7 +95,7 @@ public class StructuredBinaryReader implements AutoCloseable {
         T object;
         try {
             object = clazz.getConstructor().newInstance();
-            read(object, null, null);
+            read(object, null, 0, null);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
             e.printStackTrace();
             return null;

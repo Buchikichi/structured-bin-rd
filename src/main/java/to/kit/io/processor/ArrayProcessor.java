@@ -22,8 +22,7 @@ public abstract class ArrayProcessor extends BinaryProcessorBase {
     }
 
     protected Object allocateArray(final int length, final boolean fill) {
-        Allocate allocate = this.field.getAnnotation(Allocate.class);
-        int paddedLength = ValueUtils.pad(length, allocate.padding());
+        int paddedLength = ValueUtils.pad(length, this.allocate.padding());
         Class<?> componentType = this.field.getType().getComponentType();
         Object array = Array.newInstance(componentType, paddedLength);
 
@@ -37,8 +36,8 @@ public abstract class ArrayProcessor extends BinaryProcessorBase {
         return allocateArray(length, false);
     }
 
-    public ArrayProcessor(Object parent, Field field) {
-        super(parent, field);
+    public ArrayProcessor(Object target, Field field, int index, Object parent) {
+        super(target, field, index, parent);
         this.allocate = this.field == null ? null : this.field.getAnnotation(Allocate.class);
     }
 }

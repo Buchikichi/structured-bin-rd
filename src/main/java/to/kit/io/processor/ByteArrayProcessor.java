@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
+import java.util.function.ObjIntConsumer;
 
 public class ByteArrayProcessor extends ArrayProcessor {
     @Override
@@ -12,8 +13,8 @@ public class ByteArrayProcessor extends ArrayProcessor {
     }
 
     @Override
-    public boolean process(InputStream stream, Consumer<Object> consumer) throws IOException {
-        byte[] bytes = getFieldValue(byte[].class);
+    public boolean process(InputStream stream, ObjIntConsumer<Object> consumer) throws IOException {
+        byte[] bytes = (byte[]) this.target;
 
         if (bytes == null) {
             if (this.allocate == null) {
@@ -36,7 +37,7 @@ public class ByteArrayProcessor extends ArrayProcessor {
         return bytes.length == read;
     }
 
-    public ByteArrayProcessor(Object parent, Field field) {
-        super(parent, field);
+    public ByteArrayProcessor(Object target, Field field, int index, Object parent) {
+        super(target, field, index, parent);
     }
 }

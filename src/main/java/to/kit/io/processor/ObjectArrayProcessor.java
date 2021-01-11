@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.ObjIntConsumer;
 
 public class ObjectArrayProcessor extends ArrayProcessor {
     @Override
@@ -17,8 +18,8 @@ public class ObjectArrayProcessor extends ArrayProcessor {
     }
 
     @Override
-    public boolean process(InputStream stream, Consumer<Object> consumer) throws IOException {
-        Object[] objects = getFieldValue(Object[].class);
+    public boolean process(InputStream stream, ObjIntConsumer<Object> consumer) throws IOException {
+        Object[] objects = (Object[]) this.target;
         int remain = stream.available();
 
         if (objects == null) {
@@ -34,7 +35,10 @@ public class ObjectArrayProcessor extends ArrayProcessor {
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
-                Arrays.stream(objects).forEach(consumer);
+                for (int ix = 0, objectsLength = objects.length; ix < objectsLength; ix++) {
+                    Object o = objects[ix];
+                    consumer.accept(o, ix);
+                }
                 return true;
             }
             int length = getValueByName(this.allocate.value());
@@ -46,7 +50,7 @@ public class ObjectArrayProcessor extends ArrayProcessor {
                 try {
                     Object instance = componentType.getConstructor().newInstance();
 
-                    consumer.accept(instance);
+                    consumer.accept(instance, list.size());
                     list.add(instance);
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                     e.printStackTrace();
@@ -67,7 +71,7 @@ public class ObjectArrayProcessor extends ArrayProcessor {
         return true;
     }
 
-    public ObjectArrayProcessor(Object parent, Field field) {
-        super(parent, field);
+    public ObjectArrayProcessor(Object target, Field field, int index, Object parent) {
+        super(target, field, index, parent);
     }
 }
