@@ -59,6 +59,7 @@ public class StructuredBinaryReader implements AutoCloseable {
         } else {
             return;
         }
+//        System.out.format(">%s.%s(%d)@%08x\n", clazz.getSimpleName(), targetField, index, getPos());
         BinaryProcessor processor = this.processorList.stream()
                 .map(c -> BinaryProcessorBase.create(c, target, targetField, index, parent))
                 .filter(Objects::nonNull)
@@ -71,6 +72,7 @@ public class StructuredBinaryReader implements AutoCloseable {
                     e.printStackTrace();
                 }
             });
+//            System.out.format("*%s:%b\n", processor.getClass().getSimpleName(), processed);
             if (processed) {
                 return;
             }
